@@ -2,11 +2,57 @@
 
 import Todo from "../models/todos.model.js";
 
-//Get todo
 export const getTodos = async (req, res) => {
   try {
-    const todos = await Todo.find();
-    res.status(200).json(todos);
+    //Filter Function
+    const filter = {};
+
+    //consoel.log returns
+    //Get /api/todos?category=work&priority=high returns
+    // Filter Object: { category: 'work', priority: 'high' }
+    if (req.query.category) {
+      filter.category = req.query.category;
+    }
+
+    if (req.query.priority) {
+      filter.priority = req.query.priority;
+    }
+
+    if (req.query.completed !== undefined) {
+      let complete = req.query.completed == "true" ? true : false;
+      filter.completed = complete;
+    }
+    //Search for matching the pattern
+    if (req.query.search) {
+      const regex = new RegExp(req.query.search, "i");
+      filter.$or = [{ title: regex }, { description: regex }];
+    }
+
+    //Sort Function - sortBy = topic, sortOrder = asc,desc
+
+    const sort = {};
+
+    const sortTopic = req.query.sortBy || "createdAt";
+    const sortDirection = req.query.sortOrder === "asc" ? 1 : -1;
+
+    sort[sortTopic] = sortDirection;
+
+    const todos = await Todo.find(filter).sort(sort);
+
+    //Priority - Convert Num to String [ 1 - low, 2 - medium, 3 - high]
+    const priorityToString = {
+      1: "low",
+      2: "medium",
+      3: "high",
+    };
+
+    //Can't directly modify mongoose docs so convert to regular object
+    const transformedTodos = todos.map((todo) => ({
+      ...todo.toObject(),
+      priority: priorityToString[todo.priority],
+    }));
+
+    res.status(200).json(transformedTodos);
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch todos" });
   }
@@ -14,14 +60,46 @@ export const getTodos = async (req, res) => {
 //create todo
 export const createTodo = async (req, res) => {
   try {
-    const newTodo = new Todo({
-      text: req.body.text,
-    });
+    const { title, category, priority, dueDate, description } = req.body;
 
-    if (!newTodo.text)
+    if (!title || title.trim() === "") {
       return res
         .status(400)
-        .json({ message: "Please do not leave the text field empty" });
+        .json({ message: "Please do not leave this field empty." });
+    }
+
+    const validCategories = ["work", "personal", "shopping", "goals"];
+
+    if (category && !validCategories.includes(category)) {
+      return res.status(400).json({
+        message: "Invalid Category, Must be: work, personal, shopping, goals",
+      });
+    }
+
+    //Priority
+    const stringToPriority = {
+      high: 3,
+      medium: 2,
+      low: 1,
+    };
+
+    const validPriorityStrings = ["high", "medium", "low"];
+
+    if (priority && !validPriorityStrings.includes(priority)) {
+      return res.status(400).json({
+        message: "Invalid Priority, Must be: high, medium, low",
+      });
+    }
+
+    const priorityToNum = priority ? stringToPriority[priority] : 2; //default medium
+
+    const newTodo = new Todo({
+      title: title.trim(),
+      category: category || "personal",
+      priority: priorityToNum,
+      dueDate: dueDate ? new Date(dueDate) : null,
+      description: description || "",
+    });
 
     const savedTodo = await newTodo.save();
     res.status(200).json(savedTodo);
@@ -41,6 +119,7 @@ export const updateTodo = async (req, res) => {
     console.log("Error in updating the new message", error.message);
   }
 };
+
 //Delete todo
 export const deleteTodo = async (req, res) => {
   try {
@@ -57,3 +136,5 @@ export const deleteTodo = async (req, res) => {
     res.status(500).json({ message: "Server error while deleting item" });
   }
 };
+
+//get number of todos
