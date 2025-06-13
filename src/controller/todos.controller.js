@@ -15,7 +15,8 @@ export const getTodos = async (req, res) => {
     }
 
     if (req.query.priority) {
-      filter.priority = req.query.priority;
+      const stringToPriority = { low: 1, medium: 2, high: 3 };
+      filter.priority = stringToPriority[req.query.priority];
     }
 
     if (req.query.completed !== undefined) {
@@ -62,10 +63,18 @@ export const createTodo = async (req, res) => {
   try {
     const { title, category, priority, dueDate, description } = req.body;
 
-    if (!title || title.trim() === "") {
+    if (title === null || title === undefined) {
       return res
         .status(400)
-        .json({ message: "Please do not leave this field empty." });
+        .json({ message: "Please do not leave the field empty" });
+    }
+
+    const convertedTitle = String(title).trim();
+
+    if (convertedTitle === "") {
+      return res
+        .status(400)
+        .json({ message: "Please do not leave the title field empty." });
     }
 
     const validCategories = ["work", "personal", "shopping", "goals"];
@@ -94,7 +103,7 @@ export const createTodo = async (req, res) => {
     const priorityToNum = priority ? stringToPriority[priority] : 2; //default medium
 
     const newTodo = new Todo({
-      title: title.trim(),
+      title: convertedTitle,
       category: category || "personal",
       priority: priorityToNum,
       dueDate: dueDate ? new Date(dueDate) : null,
@@ -105,18 +114,67 @@ export const createTodo = async (req, res) => {
     res.status(200).json(savedTodo);
   } catch (error) {
     console.log("Error in creating new todo: ", error.message);
+    res.status(500).json({ message: "Server error creating todo" });
   }
 };
 
 //Update Todo
 export const updateTodo = async (req, res) => {
   try {
-    const updated = await Todo.findByIdAndUpdate(req.params.id, req.body, {
+    const todoId = req.params.id;
+    const updatedData = { ...req.body };
+
+    if (
+      updatedData?.title === null ||
+      updatedData?.title == undefined ||
+      updatedData?.title === ""
+    ) {
+      return res
+        .status(400)
+        .json({ message: "please do not leave this field empty" });
+    }
+
+    const validCategories = ["work", "personal", "shopping", "goals"];
+    if (
+      updatedData.category &&
+      !validCategories.includes(updatedData.category)
+    ) {
+      return res.status(400).json({
+        message: "Invalid Category, Must be: work, personal, shopping, goals",
+      });
+    }
+
+    const validPriorities = ["high", "medium", "low"];
+    if (
+      updatedData.priority &&
+      !validPriorities.includes(updatedData.priority)
+    ) {
+      return res.status(400).json({
+        message: "Invalid priority, must be: high, medium, low",
+      });
+    }
+
+    if (updatedData.priority) {
+      const convertToNum = { low: 1, medium: 2, high: 3 };
+      updatedData.priority = convertToNum[updatedData.priority];
+    }
+
+    const updated = await Todo.findByIdAndUpdate(todoId, updatedData, {
       new: true,
     });
+
+    if (!updated) {
+      return res.status(404).send("Todo not found");
+    }
+
     res.json(updated);
   } catch (error) {
-    console.log("Error in updating the new message", error.message);
+    // Invalid ObjectID format
+    if (error.name === "CastError") {
+      return res.status(400).json({ message: "Invalid todo ID format" });
+    }
+
+    res.status(500).send(error.message);
   }
 };
 
@@ -138,3 +196,59 @@ export const deleteTodo = async (req, res) => {
 };
 
 //get number of todos
+export const getTodoStats = async (req, res) => {
+  try {
+    //Stats to get
+    //total, completed, pending, by category, byPriority.
+
+    const total = await Todo.countDocuments();
+
+    const completed = await Todo.countDocuments({ completed: true });
+    const pending = total - completed;
+
+    const priorityStats = await Todo.aggregate([
+      {
+        $group: {
+          _id: "$priority",
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const categoryStats = await Todo.aggregate([
+      {
+        $group: {
+          _id: "$category",
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const byPriority = {};
+
+    const numToStringPriority = { 1: "low", 2: "medium", 3: "high" };
+    priorityStats.forEach((item) => {
+      const { _id, count } = item;
+      byPriority[numToStringPriority[_id]] = count;
+    });
+
+    const byCategory = {};
+
+    categoryStats.forEach((item) => {
+      const { _id, count } = item;
+      byCategory[_id] = count;
+    });
+
+    const stats = {
+      total,
+      completed,
+      pending,
+      byPriority,
+      byCategory,
+    };
+
+    res.status(200).json(stats);
+  } catch (error) {
+    res.status(500).send(error.message);
+  }
+};
