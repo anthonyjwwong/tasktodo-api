@@ -53,12 +53,13 @@ npm start
 
 ## API Endpoints
 
-| Method | Endpoint       | Description       |
-| ------ | -------------- | ----------------- |
-| GET    | /api/todos     | Get all todos     |
-| POST   | /api/todos     | Create new todo   |
-| PUT    | /api/todos/:id | Update todo by id |
-| DELETE | /api/todos/:id | delete todo by id |
+| Method | Endpoint         | Description       |
+| ------ | ---------------- | ----------------- |
+| GET    | /api/todos       | Get all todos     |
+| POST   | /api/todos       | Create new todo   |
+| PUT    | /api/todos/:id   | Update todo by id |
+| DELETE | /api/todos/:id   | Delete todo by id |
+| GET    | /api/todos/stats | Get todo Stats    |
 
 ## Frontend repository
 
