@@ -124,14 +124,10 @@ export const updateTodo = async (req, res) => {
     const todoId = req.params.id;
     const updatedData = { ...req.body };
 
-    if (
-      updatedData?.title === null ||
-      updatedData?.title == undefined ||
-      updatedData?.title === ""
-    ) {
-      return res
-        .status(400)
-        .json({ message: "please do not leave this field empty" });
+    if (updatedData.title !== undefined) {
+      if (!updatedData.title || updatedData.title.trim() === "") {
+        return res.status(400).json({ message: "Title cannot be empty" });
+      }
     }
 
     const validCategories = ["work", "personal", "shopping", "goals"];

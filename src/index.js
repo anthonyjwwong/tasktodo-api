@@ -6,16 +6,18 @@ import cors from "cors";
 
 const app = express();
 dotenv.config();
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 5001;
 
 app.use(express.json());
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin:
+      process.env.NODE_ENV === "production"
+        ? process.env.FRONTEND_URL
+        : "http://localhost:5173",
     credentials: true,
   })
-); // Enable CORS for all routes
-
+);
 app.use("/api/todos", todosRoute);
 
 app.listen(PORT, () => {
