@@ -62,9 +62,7 @@ npm start
 | GET    | /api/todos/stats | Get todo Stats    |
 
 ## Frontend repository
-
-TaskTodo Frontend - Not ready.
+https://github.com/anthonyjwwong/tasktodo-frontend
 
 ## Live Demo
-
-[Coming soon - deployment in progress]
+[View Live App](https://taskproductivity-frontend.vercel.app/)
